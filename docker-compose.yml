@@ -9,7 +9,8 @@ services:
       - db_data:/app_code/data
     environment:
       - PYTHONUNBUFFERED=1
+      - JWT_SECRET_KEY=my-dev-secret-key-32-chars-long!!  # Додайте цей рядок
     restart: unless-stopped
-
+    
 volumes:
   db_data:
