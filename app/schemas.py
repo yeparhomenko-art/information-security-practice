@@ -1,98 +1,71 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 import re
- 
-# ── Схеми для реєстрації ──
- 
+
+
 class UserCreate(BaseModel):
-	"""Схема запиту на реєстрацію нового користувача."""
-	username: str = Field(
-    	...,
-    	min_length=3,
-    	max_length=50,
-    	pattern=r"^[a-zA-Z0-9_]+$",
-    	description="Логін (латиниця, цифри, підкреслення)"
-	)
-	email: EmailStr = Field(
-    	...,
-    	description="Email-адреса"
-	)
-	password: str = Field(
-    	...,
-    	min_length=8,
-    	max_length=128,
-    	description="Пароль (мінімум 8 символів)"
-	)
-	full_name: str = Field(
-    	...,
-    	min_length=2,
-    	max_length=150,
-    	description="Повне ім'я користувача"
-	)
-	@field_validator("password")
-	@classmethod
-	def validate_password_strength(cls, v):
-		"""Перевірка складності пароля."""
-		if not re.search(r"[A-Z]", v):
-			raise ValueError(
-            	"Пароль має містити хоча б одну велику літеру"
-        	)
-		if not re.search(r"[a-z]", v):
-			raise ValueError(
-            	"Пароль має містити хоча б одну малу літеру"
-        	)
-		if not re.search(r"[0-9]", v):
-			raise ValueError(
-            	"Пароль має містити хоча б одну цифру"
-        	)
-		return v
- 
- 
+    username: str = Field(..., min_length=3, max_length=30)
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    full_name: str = Field(..., min_length=2, max_length=100)
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_]+$", v):
+            raise ValueError("Логін: лише латинські літери, цифри та _")
+        return v
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v):
+        if re.search(r"[<>&\"']", v):
+            raise ValueError("Ім’я не може містити < > & \"")
+        return v.strip()
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v):
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Потрібна хоча б одна велика літера")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Потрібна хоча б одна мала літера")
+        if not re.search(r"\d", v):
+            raise ValueError("Потрібна хоча б одна цифра")
+        return v
+
+
 class UserResponse(BaseModel):
-	"""Схема відповіді з даними користувача (без пароля!)."""
-	id: int
-	username: str
-	email: str
-	full_name: str
-	is_active: bool
-	created_at: datetime
- 
-	model_config = {"from_attributes": True}
- 
- 
-# ── Схеми для входу ──
- 
+    id: int
+    username: str
+    email: str
+    full_name: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class LoginRequest(BaseModel):
-	"""Схема запиту на вхід."""
-	username: str
-	password: str
- 
- 
-class LoginResponse(BaseModel):
-	"""Схема відповіді при успішному вході."""
-	message: str
-	user_id: int
-	username: str
-	roles: list[str] = []
+    username: str
+    password: str
 
- 
+
 class TokenResponse(BaseModel):
-	access_token: str
-	refresh_token: str
-	token_type: str = "bearer"
- 
- 
-class TokenRefreshRequest(BaseModel):
-	refresh_token: str
- 
- 
-class UserInfo(BaseModel):
-	id: int
-	username: str
-	email: str
-	full_name: str
-	role: str
- 
-	class Config:
-		from_attributes = True
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
 
+
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class UserInfo(BaseModel):
+    id: int
+    username: str
+    email: str
+    full_name: str
+    role: str
+
+    model_config = {"from_attributes": True}

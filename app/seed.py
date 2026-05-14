@@ -68,30 +68,30 @@ def seed():
         # ---------------- USERS ----------------
         admin_user = User(
             username="admin",
-            email="admin@university.edu",
-            full_name="Адміністратор Системи",
             password_hash=hash_password("Admin123!@#"),
             is_active=True
         )
+        admin_user.email = "admin@university.edu"
+        admin_user.full_name = "Адміністратор Системи"
         admin_user.roles.append(admin_role)
 
         teacher_user = User(
             username="petrov",
-            email="petrov@university.edu",
-            full_name="Петров Іван Сергійович",
             password_hash=hash_password("Teacher123!"),
             is_active=True
         )
+        teacher_user.email = "petrov@university.edu"
+        teacher_user.full_name = "Петро Петров"
         teacher_user.roles.append(teacher_role)
 
         student_user = User(
             username="ivanov",
-            email="ivanov@university.edu",
-            full_name="Іванов Олексій Петрович",
             password_hash=hash_password("Student123!"),
             group_id=group.id,
             is_active=True
         )
+        student_user.email = "ivanov@university.edu"
+        student_user.full_name = "Іванов Олексій Петрович"
         student_user.roles.append(student_role)
 
         db.add_all([admin_user, teacher_user, student_user])

@@ -40,9 +40,7 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
 	refresh_token = create_refresh_token(user.id)
  
 	return TokenResponse(
-    	access_token=access_token,
-    	refresh_token=refresh_token,
-	)
+    	access_token=access_token, refresh_token=refresh_token)
  
  
 @router.post("/refresh", response_model=TokenResponse)

@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from app.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
- 
 
 def create_access_token(user_id: int, role: str) -> str:
 	"""
@@ -17,7 +16,6 @@ def create_access_token(user_id: int, role: str) -> str:
 	}
 	return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
  
- 
 def create_refresh_token(user_id: int) -> str:
 	"""
 	Генерує long-lived refresh token.
@@ -30,7 +28,6 @@ def create_refresh_token(user_id: int) -> str:
     	"type": "refresh"
 	}
 	return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
- 
  
 def verify_token(token: str) -> dict:
 	"""

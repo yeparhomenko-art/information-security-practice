@@ -4,6 +4,9 @@ RUN apt-get update && apt-get install -y sqlite3
 
 WORKDIR /app_code
  
+
+RUN apt update && apt install -y curl
+
 # Копіюємо залежності окремим шаром (кешування)
 COPY requirements.txt .
 RUN python -m pip install --no-cache-dir -r requirements.txt

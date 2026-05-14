@@ -6,6 +6,9 @@ from app.database import Base
 
 import app.models
 
+from sqlalchemy.ext.hybrid import hybrid_property
+from app.crypto.encryption import encrypt_field, decrypt_field
+
 # Зв’язок User <-> Role (M:N)
 user_roles = Table(
 	"user_roles",
@@ -33,9 +36,8 @@ class User(Base):
 	id = Column(Integer, primary_key=True, index=True)
 	username = Column(String(50), unique=True,
                   	nullable=False, index=True)
-	email = Column(String(100), unique=True,
-               	nullable=False, index=True)
-	full_name = Column(String(150), nullable=False)
+	_email = Column("email", String(500), unique=True, nullable=False)
+	_full_name = Column("full_name", String(500), nullable=False)
 	password_hash = Column(String(255), nullable=False)
 	is_active = Column(Boolean, default=True)
 	created_at = Column(DateTime,
@@ -58,6 +60,21 @@ class User(Base):
 	grades = relationship("Grade",
                       	back_populates="student",
                       	foreign_keys="Grade.student_id")
+	@hybrid_property
+	def email(self):
+		return decrypt_field(self._email)
+
+	@email.setter
+	def email(self, value):
+		self._email = encrypt_field(value)
+
+	@hybrid_property
+	def full_name(self):
+		return decrypt_field(self._full_name)
+
+	@full_name.setter
+	def full_name(self, value):
+		self._full_name = encrypt_field(value)
  
 	def __repr__(self): 
 		return f"<User {self.username}>"
