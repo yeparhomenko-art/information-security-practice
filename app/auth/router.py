@@ -14,7 +14,7 @@ from app.security import verify_password
 router = APIRouter(prefix="/auth", tags=["Authentication"])
  
 
- from app.audit.logger import log_login_success, log_login_failed
+from app.audit.logger import log_login_success, log_login_failed
 from app.audit.detector import check_brute_force, check_off_hours_access
  
 @router.post("/login")
