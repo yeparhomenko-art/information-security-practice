@@ -9,6 +9,10 @@ from app.schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, T
 from app.auth.jwt_handler import create_access_token, create_refresh_token, verify_token
 from app.auth.dependencies import get_current_user
 
+from datetime import datetime, timezone
+from app.audit.logger import log_login_success, log_login_failed
+from app.audit.detector import check_brute_force, check_off_hours_access
+
 from app.middleware.rate_limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -66,9 +70,19 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse, summary="Вхід користувача")
 @limiter.limit("5/minute")
 def login(request: Request, credentials: LoginRequest, db: Session = Depends(get_db)):
+    ip = request.client.host if request.client else "unknown"
+
+    if check_brute_force(db, ip):
+        log_login_failed(db, credentials.username, ip, "brute_force_blocked")
+        raise HTTPException(
+            status_code=429,
+            detail="Забагато невдалих спроб. Спробуйте пізніше."
+        )
+
     user = db.query(User).filter(User.username == credentials.username).first()
 
     if not user or not verify_password(credentials.password, user.password_hash):
+        log_login_failed(db, credentials.username, ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Невірний логін або пароль"
@@ -79,6 +93,16 @@ def login(request: Request, credentials: LoginRequest, db: Session = Depends(get
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Акаунт деактивовано"
         )
+
+    check_off_hours_access(
+        db,
+        user.id,
+        user.username,
+        ip,
+        datetime.now(timezone.utc).hour
+    )
+
+    log_login_success(db, user.id, user.username, ip)
 
     role = user.roles[0].name if user.roles else "student"
 

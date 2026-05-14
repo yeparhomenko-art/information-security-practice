@@ -13,35 +13,30 @@ from app.security import verify_password
  
 router = APIRouter(prefix="/auth", tags=["Authentication"])
  
+
+ from app.audit.logger import log_login_success, log_login_failed
+from app.audit.detector import check_brute_force, check_off_hours_access
  
-# POST /auth/login — залишаємо з практичної №4, але тепер повертаємо токени
-@router.post("/login", response_model=TokenResponse)
-def login(username: str, password: str, db: Session = Depends(get_db)):
-	# 1. Знаходимо користувача
-	user = db.query(User).filter(User.username == username).first()
+@router.post("/login")
+async def login(request: Request, credentials: LoginRequest,
+            	db: Session = Depends(get_db)):
+	ip = request.client.host
+ 
+	# Перевірка Brute Force ДО перевірки пароля
+	if check_brute_force(db, ip):
+		log_login_failed(db, credentials.username, ip, "brute_force_blocked")
+		raise HTTPException(status_code=429,
+        	detail="Забагато невдалих спроб. Спробуйте пізніше.")
+ 
+	user = authenticate_user(db, credentials.username, credentials.password)
 	if not user:
-		raise HTTPException(
-        	status_code=status.HTTP_401_UNAUTHORIZED,
-        	detail="Невірний логін або пароль",
-    	)
+		log_login_failed(db, credentials.username, ip)
+		raise HTTPException(status_code=401, detail="Невірний логін або пароль")
  
-	# 2. Перевіряємо пароль (bcrypt з практичної №4)
-	if not verify_password(password, user.password_hash):
-		raise HTTPException(
-        	status_code=status.HTTP_401_UNAUTHORIZED,
-        	detail="Невірний логін або пароль",
-    	)
- 
-	# 3. Визначаємо роль (перша роль користувача)
-	role = user.roles[0].name if user.roles else "student"
- 
-	# 4. Генеруємо токени
-	access_token = create_access_token(user.id, role)
-	refresh_token = create_refresh_token(user.id)
- 
-	return TokenResponse(
-    	access_token=access_token, refresh_token=refresh_token)
- 
+	from datetime import datetime, timezone
+	check_off_hours_access(db, user.id, user.username, ip,
+                       	datetime.now(timezone.utc).hour)
+	log_login_success(db, user.id, user.username, ip)
  
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_token(body: TokenRefreshRequest, db: Session = Depends(get_db)):

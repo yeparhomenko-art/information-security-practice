@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import Base
+from app.database import Base, engine
 from app import models
 
 from app.routers import auth
@@ -15,6 +15,9 @@ from app.middleware.rate_limiter import limiter
 
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
+from app.audit.middleware import AuditMiddleware
+
+from app.audit.models import AuditLog
 
 app = FastAPI(
     title="Електронний деканат",
@@ -22,10 +25,19 @@ app = FastAPI(
     version="0.4.0"
 )
 
+Base.metadata.create_all(bind=engine)
+
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(SecurityHeadersMiddleware)
+ 
+from app.audit.middleware import AuditMiddleware
+from app.audit.router import router as audit_router
+ 
+app.add_middleware(AuditMiddleware)
+app.include_router(audit_router, prefix="/admin", tags=["audit"])
+
 
 app.add_middleware(
     CORSMiddleware,
