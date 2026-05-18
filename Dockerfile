@@ -1,23 +1,26 @@
-FROM python:3.11-slim
-RUN apt-get update && apt-get install -y sqlite3
+FROM python:3.12-slim
 
+WORKDIR /app
 
-WORKDIR /app_code
- 
+RUN groupadd -r appuser && \
+    useradd -r -g appuser -d /app -s /sbin/nologin appuser
 
-RUN apt update && apt install -y curl
-
-# Копіюємо залежності окремим шаром (кешування)
 COPY requirements.txt .
-RUN python -m pip install --no-cache-dir -r requirements.txt
- 
-# Копіюємо весь код
-COPY . .
- 
-# Створюємо директорію для бази даних
-RUN mkdir -p /app_code/data
- 
-EXPOSE 3010
 
-# Запускаємо сервер
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3010", "--reload"]
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY ./app ./app
+COPY ./scripts ./scripts
+COPY ./alembic ./alembic
+COPY alembic.ini .
+
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')" || exit 1
+
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
