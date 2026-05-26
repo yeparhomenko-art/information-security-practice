@@ -22,7 +22,10 @@ from app.audit.models import AuditLog
 app = FastAPI(
     title="Електронний деканат",
     description="API для управління академічними даними",
-    version="0.4.0"
+    version="0.4.0",
+    servers=[
+        {"url": "/"}
+    ]
 )
 
 Base.metadata.create_all(bind=engine)
@@ -44,6 +47,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3010",
+        "http://localhost:8000",
+        "https://localhost",
+        "https://localhost:443",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
@@ -54,6 +60,40 @@ app.include_router(auth.router)
 app.include_router(students_router)
 app.include_router(teachers_router)
 app.include_router(admin_router)
+
+
+from fastapi.openapi.utils import get_openapi
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        servers=app.servers,
+    )
+
+    openapi_schema["components"]["securitySchemes"] = {
+        "HTTPBearer": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+    }
+
+    for path in openapi_schema["paths"].values():
+        for method in path.values():
+            method["security"] = [{"HTTPBearer": []}]
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 @app.get("/")
